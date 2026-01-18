@@ -48,7 +48,7 @@ Ersilia-apptainer provides a file-based command-line interface for running Ersil
 Run a model from a directory containing your input file:
 
 ```bash
-ersilia-apptainer \
+ersilia_apptainer \
   --sif eos3b5e.sif \
   --input input.csv \
   --output output.csv
@@ -57,7 +57,7 @@ ersilia-apptainer \
 To enable verbose logging:
 
 ```bash
-ersilia-apptainer \
+ersilia_apptainer \
   --sif eos3b5e.sif \
   --input input.csv \
   --output output.csv \
