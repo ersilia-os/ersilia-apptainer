@@ -3,18 +3,20 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "my-package"
+name = "ersilia_apptainer"
 version = "0.1.0"
-description = "A short description of my package"
+description = "A command-line interface for converting and executing Ersilia containerized models on HPC systems using Apptainer."
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
-  {name="Your Name", email="you@ersilia.io"}
+  {name="Marina Miñarro-Lleonar", email="marina@ersilia.io"},
+  {name="Miquel Duran-Frigola", email="miquel@ersilia.io"}
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 
 dependencies = [
-  "numpy>=1.21",
+  "rich",
+  "loguru"
 ]
 
 [project.optional-dependencies]
@@ -23,6 +25,9 @@ dev = [
   "black",
   "flake8",
 ]
+
+[project.scripts]
+ersilia_apptainer = "ersilia_apptainer.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

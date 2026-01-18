@@ -1,4 +1,4 @@
-from my_package.core import hello
+from ersilia_apptainer.cli import hello
 
 def test_hello():
     assert hello("Ersilia") == "Hello, Ersilia!"
