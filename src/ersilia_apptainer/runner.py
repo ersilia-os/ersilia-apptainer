@@ -99,10 +99,10 @@ class ErsiliaApptainer:
         self._output = str(path)
 
     def _check_apptainer(self):
-        if shutil.which("apptainer") is None:
+        if shutil.which("singularity") is None:
             raise RuntimeError(
-                "Apptainer is not available in PATH. "
-                "Please install Apptainer or load the appropriate module."
+                "Singularity is not available in PATH. "
+                "Please install Singularity or load the appropriate module."
             )
         
     def _find_main(self):
@@ -110,15 +110,13 @@ class ErsiliaApptainer:
         Locate the model execution entrypoint (main.py) inside the container.
         """
         cmd=[
-            "apptainer",
+            "singularity",
             "exec",
-            "--containall",
-            "--no-home",
             "--pwd", "/",
             self.container,
             "sh",
             "-lc",
-            "find /root/bundles -type f -path '*/model/framework/code/main.py' 2>/dev/null",
+            "find /opt/ersilia/bundles -type f -path '*/model/framework/code/main.py' 2>/dev/null",
         ]
         result = subprocess.run(
         cmd,
@@ -191,10 +189,8 @@ class ErsiliaApptainer:
         container_output = f"/workspace/{output_name}"
 
         cmd = [
-            "apptainer",
+            "singularity",
             "exec",
-            "--containall",
-            "--no-home",
             "--pwd", "/",
             "--bind", f"{cwd}:/workspace",
             self.container,
