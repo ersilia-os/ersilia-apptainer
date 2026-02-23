@@ -178,27 +178,39 @@ class ErsiliaApptainer:
    
     def run(self):
         """
-        Execute the Ersilia model inside the Apptainer container
+        Execute the Ersilia model with multi-path support
         """
-        cwd = Path.cwd().resolve()
+        # Get absolute paths
+        input_path = Path(self.input).resolve()
+        output_path = Path(self.output).resolve()
+        container_path = Path(self.container).resolve()
 
-        input_name= Path(self.input).name
-        output_name= Path(self.output).name
+        # Create a list of unique parent directories to bind
+        # This allows input, output, and sif to be anywhere
+        bind_paths = {
+            str(input_path.parent),
+            str(output_path.parent),
+            str(container_path.parent)
+        }
         
-        container_input= f"/workspace/{input_name}"
-        container_output = f"/workspace/{output_name}"
+        # Build the bind string: /path/on/host:/path/on/host
+        # Mapping them 1:1 is the most reliable way on HPC
+        bind_args = []
+        for p in bind_paths:
+            bind_args.extend(["--bind", f"{p}:{p}"])
 
         cmd = [
             "singularity",
             "exec",
             "--pwd", "/",
-            "--bind", f"{cwd}:/workspace",
+            *bind_args, # Unpack all bind paths here
             self.container,
             "python",
             self.main_py,
-            container_input,
-            container_output,  
+            str(input_path),  # Pass the real absolute path
+            str(output_path), # Pass the real absolute path
         ]
+
         result = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
