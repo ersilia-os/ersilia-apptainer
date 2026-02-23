@@ -194,7 +194,6 @@ class ErsiliaApptainer:
         }
         
         # Build the bind string: /path/on/host:/path/on/host
-        # Mapping them 1:1 is the most reliable way on HPC
         bind_args = []
         for p in bind_paths:
             bind_args.extend(["--bind", f"{p}:{p}"])
@@ -203,12 +202,12 @@ class ErsiliaApptainer:
             "singularity",
             "exec",
             "--pwd", "/",
-            *bind_args, # Unpack all bind paths here
+            *bind_args, # Unpack all bind paths 
             self.container,
             "python",
             self.main_py,
-            str(input_path),  # Pass the real absolute path
-            str(output_path), # Pass the real absolute path
+            str(input_path),  
+            str(output_path), 
         ]
 
         result = subprocess.run(
