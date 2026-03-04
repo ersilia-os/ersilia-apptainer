@@ -1,3 +1,5 @@
+import csv
+import hashlib
 import os
 import shutil
 import subprocess
@@ -176,6 +178,29 @@ class ErsiliaApptainer:
 
         logger.success("Output validation passed")
    
+    def _format_output(self):
+        """
+        Rewrite the output CSV to prepend 'key' (MD5 of input SMILES) and 'input' columns,
+        mimicking the ersilia CLI output format.
+        """
+        with open(self.input, "r") as f:
+            reader = csv.DictReader(f)
+            smiles_col = reader.fieldnames[0]
+            inputs = [row[smiles_col] for row in reader]
+
+        keys = [hashlib.md5(s.encode("utf-8")).hexdigest() for s in inputs]
+
+        tmp_path = self.output + ".tmp"
+        with open(self.output, "r") as f_in, open(tmp_path, "w", newline="") as f_out:
+            reader = csv.reader(f_in)
+            writer = csv.writer(f_out)
+            writer.writerow(["key", "input"] + next(reader))
+            for key, inp, row in zip(keys, inputs, reader):
+                writer.writerow([key, inp] + row)
+
+        os.replace(tmp_path, self.output)
+        logger.success("Output formatted with key and input columns")
+
     def run(self):
         """
         Execute the Ersilia model with multi-path support
@@ -230,3 +255,4 @@ class ErsiliaApptainer:
         logger.info(f"Output written to: {self.output}")
 
         self._check_output()
+        self._format_output()
