@@ -1,39 +1,35 @@
 # Ersilia-apptainer
 
-Ersilia-apptainer is a command-line tool that enables the execution of Ersilia containerized models on high-performance computing (HPC) systems using Apptainer. It provides a simple, reproducible, file-based workflow to run Ersilia models in environments where Docker is not available or permitted, such as shared HPC clusters. The tool automatically discovers the model entrypoint inside an Apptainer image, executes the model with user-provided input files, and validates the output to ensure correctness.
+Ersilia-apptainer is a command-line tool for running and creating Ersilia containerized models on high-performance computing (HPC) systems using Apptainer/Singularity. It provides a simple, reproducible, file-based workflow in environments where Docker is not available or permitted, such as shared HPC clusters.
+
+- **`create`** — build a portable `.sif` image from any Ersilia DockerHub model
+- **`run`** — execute an Ersilia model from an existing `.sif` container
 
 ## Installation
 
 ### System requirements
 
-- **Apptainer** (must be available as `apptainer` in your `PATH`)
+- **Singularity / Apptainer** — must be available in your `PATH` (required for both `run` and `create`)
 - Python **≥ 3.9**
 
-> ⚠️ Apptainer is a system dependency and must be installed separately.  
-> On many HPC systems, Apptainer is provided via environment modules.
+> ⚠️ Apptainer/Singularity is a system dependency and must be installed separately.
+> On most HPC systems it is provided via environment modules (e.g. `module load singularity`).
 
-You can verify that Apptainer is available with:
+Verify it is available:
 
 ```bash
-apptainer --version
+singularity --version   # or: apptainer --version
 ```
 
 ### Python environment
 
-To get started, create a Conda environment:
-
 ```bash
 conda create -n ersilia_apptainer python=3.9
 conda activate ersilia_apptainer
-```
-
-Then install the package using pip:
-
-```bash
 pip install git+https://github.com/ersilia-os/ersilia-apptainer.git
 ```
 
-For development, you can also install it in editable mode:
+For development:
 
 ```bash
 git clone https://github.com/ersilia-os/ersilia-apptainer.git
@@ -43,39 +39,73 @@ pip install -e .
 
 ## Usage
 
-Ersilia-apptainer provides a file-based command-line interface for running Ersilia models packaged as Apptainer (`.sif`) images.
+### `ersilia_apptainer create` — build a `.sif` image
 
-Run a model from a directory containing your input file:
-
-```bash
-ersilia_apptainer \
-  --sif eos3b5e.sif \
-  --input input.csv \
-  --output output.csv
-```
-
-To enable verbose logging:
+Pull an Ersilia model from DockerHub and convert it to a portable Singularity image.
 
 ```bash
-ersilia_apptainer \
-  --sif eos3b5e.sif \
-  --input input.csv \
-  --output output.csv \
-  --verbose
+ersilia_apptainer create \
+  --model eos2xeq \
+  --version v1.0.0 \
+  --output-dir /data/sif_images
 ```
 
-### Execution model
+This produces `/data/sif_images/eos2xeq_v1.sif`.
+Only the **major** version number is used in the output filename (`v1.0.0` → `_v1`).
 
-- The current working directory is bind-mounted into the container at `/workspace`
-- Input and output files must be located in the current directory
-- Containers are executed in isolated mode (`--containall`, `--no-home`)
-- No files are written inside the container filesystem
+| Argument | Required | Description |
+|---|---|---|
+| `--model` | yes | Ersilia model ID (e.g. `eos2xeq`) |
+| `--version` | yes | DockerHub tag (e.g. `v1.0.0`) |
+| `--output-dir` | no | Directory for the `.sif` file (default: current directory) |
+| `--verbose` | no | Enable debug logging |
+
+Under the hood, `create` generates an Apptainer definition file and runs `singularity build`. The definition moves model bundles to `/opt/ersilia` so the image is readable by any user on shared filesystems.
+
+---
+
+### `ersilia_apptainer run` — execute a model
+
+Run predictions from an existing `.sif` image against an input CSV file.
+
+```bash
+ersilia_apptainer run \
+  --sif eos2xeq_v1.sif \
+  --input compounds.csv \
+  --output predictions.csv
+```
+
+| Argument | Required | Description |
+|---|---|---|
+| `--sif` | yes | Path to the `.sif` image |
+| `--input` | yes | Input CSV file (first column: SMILES) |
+| `--output` | yes | Output CSV path |
+| `--verbose` | no | Enable debug logging |
+
+#### Execution model
+
+The current working directory is bind-mounted into the container at `/workspace`. Input and output files must be in the current directory.
 
 ```
 Host directory        Container
 --------------        ----------
 ./input.csv     ──▶   /workspace/input.csv
 ./output.csv    ◀──   /workspace/output.csv
+```
+
+---
+
+### End-to-end example
+
+```bash
+# 1. Build the image (once)
+ersilia_apptainer create --model eos2xeq --version v1.0.0
+
+# 2. Run predictions
+ersilia_apptainer run \
+  --sif eos2xeq_v1.sif \
+  --input compounds.csv \
+  --output predictions.csv
 ```
 
 ## About the Ersilia Open Source Initiative
