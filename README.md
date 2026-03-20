@@ -84,14 +84,27 @@ ersilia_apptainer run \
 
 #### Execution model
 
-The current working directory is bind-mounted into the container at `/workspace`. Input and output files must be in the current directory.
+Input, output, and `.sif` files can live **anywhere on the filesystem** — they do not need to be in the same directory. The runner resolves all paths to absolute form and bind-mounts each parent directory into the container at the same path, so paths are identical inside and outside the container.
 
 ```
-Host directory        Container
---------------        ----------
-./input.csv     ──▶   /workspace/input.csv
-./output.csv    ◀──   /workspace/output.csv
+Host path                        Container (same path)
+---------------------------------   ---------------------------------
+/data/inputs/compounds.csv  ──▶   /data/inputs/compounds.csv
+/results/predictions.csv    ◀──   /results/predictions.csv
 ```
+
+The model entrypoint (`main.py`) is auto-discovered inside the container at:
+
+```
+/opt/ersilia/bundles/<bundle>/model/framework/code/main.py
+```
+
+After execution, the tool validates that the output row count matches the input, then prepends two columns to the output CSV to match the standard Ersilia output format:
+
+| Column | Description |
+|--------|-------------|
+| `key`  | MD5 hash of the input SMILES string |
+| `input` | Original SMILES string |
 
 ---
 
