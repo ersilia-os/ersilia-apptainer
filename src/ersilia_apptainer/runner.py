@@ -126,14 +126,14 @@ class ErsiliaApptainer:
         with open(path, "r") as f:
             return sum(1 for line in f if line.strip())
     
-    def _check_output(self):
+    def _check_output(self, raw_output):
         """
         Docstring for _check_output
-        
+
         :param self: Description
         """
         input_lines = self._count_lines(self.input)
-        output_lines = self._count_lines(self.output)
+        output_lines = self._count_lines(raw_output)
 
         logger.info(f"Input lines: {input_lines}")
         logger.info(f"Output lines: {output_lines}")
@@ -148,11 +148,12 @@ class ErsiliaApptainer:
             )
 
         logger.success("Output validation passed")
-   
-    def _format_output(self):
+
+    def _format_output(self, raw_output):
         """
-        Rewrite the output CSV to prepend 'key' (MD5 of input SMILES) and 'input' columns,
-        mimicking the ersilia CLI output format.
+        Rewrite the raw model output CSV to prepend 'key' (MD5 of input SMILES) and 'input'
+        columns, mimicking the ersilia CLI output format, and atomically publish it to
+        self.output so a killed job can never leave a partially-formatted file at the final path.
         """
         with open(self.input, "r") as f:
             reader = csv.DictReader(f)
@@ -162,7 +163,7 @@ class ErsiliaApptainer:
         keys = [hashlib.md5(s.encode("utf-8")).hexdigest() for s in inputs]
 
         tmp_path = self.output + ".tmp"
-        with open(self.output, "r") as f_in, open(tmp_path, "w", newline="") as f_out:
+        with open(raw_output, "r") as f_in, open(tmp_path, "w", newline="") as f_out:
             reader = csv.reader(f_in)
             writer = csv.writer(f_out)
             writer.writerow(["key", "input"] + next(reader))
@@ -170,6 +171,7 @@ class ErsiliaApptainer:
                 writer.writerow([key, inp] + row)
 
         os.replace(tmp_path, self.output)
+        os.remove(raw_output)
         logger.success("Output formatted with key and input columns")
 
     def run(self):
@@ -180,6 +182,7 @@ class ErsiliaApptainer:
         input_path = Path(self.input).resolve()
         output_path = Path(self.output).resolve()
         container_path = Path(self.container).resolve()
+        raw_output = str(output_path) + ".raw"
 
         # Create a list of unique parent directories to bind
         # This allows input, output, and sif to be anywhere
@@ -188,7 +191,7 @@ class ErsiliaApptainer:
             str(output_path.parent),
             str(container_path.parent)
         }
-        
+
         # Build the bind string: /path/on/host:/path/on/host
         bind_args = []
         for p in bind_paths:
@@ -198,12 +201,12 @@ class ErsiliaApptainer:
             "singularity",
             "exec",
             "--pwd", "/",
-            *bind_args, # Unpack all bind paths 
+            *bind_args, # Unpack all bind paths
             self.container,
             "python",
             self.main_py,
-            str(input_path),  
-            str(output_path), 
+            str(input_path),
+            raw_output,
         ]
 
         result = subprocess.run(
@@ -223,7 +226,8 @@ class ErsiliaApptainer:
             raise RuntimeError("Ersilia model execution failed")
 
         logger.success(f"Model execution completed successfully")
-        logger.info(f"Output written to: {self.output}")
+        logger.info(f"Raw output written to: {raw_output}")
 
-        self._check_output()
-        self._format_output()
+        self._check_output(raw_output)
+        self._format_output(raw_output)
+        logger.info(f"Output written to: {self.output}")
