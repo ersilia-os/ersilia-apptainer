@@ -17,6 +17,13 @@ From: ersiliaos/{model_id}:{version}
     mv /root/bundles /opt/ersilia/bundles
     mv /root/model /opt/ersilia/model
 
+    # Some models (e.g. lazyqsar-based) ship cached descriptors under
+    # /root/.lazyqsar. When present, make them world-readable. Gated on
+    # existence so this is a safe no-op for all other models.
+    if [ -d /root/.lazyqsar ]; then
+        chmod -R 755 /root/.lazyqsar
+    fi
+
     # Ensure every user has read/execute permissions
     chmod -R 755 /opt/ersilia
 
@@ -25,6 +32,10 @@ From: ersiliaos/{model_id}:{version}
 
 %environment
     export ERSILIA_PATH=/opt/ersilia
+    # Pin HOME=/root only for models carrying the lazyqsar cache, so the
+    # model resolves ~/.lazyqsar to /root/.lazyqsar at runtime. No effect
+    # on other models.
+    [ -d /root/.lazyqsar ] && export HOME=/root || true
 """
 
 
@@ -101,14 +112,15 @@ class ErsiliaApptainerCreator:
                 str(def_file),
             ]
 
-            logger.info("Running singularity build — this may take a few minutes...")
-
-            result = subprocess.run(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-            )
+            with logger.status(
+                f"Building [bold]{self.model}[/] image — this can take several minutes"
+            ):
+                result = subprocess.run(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                )
 
             if result.stdout:
                 for line in result.stdout.splitlines():
