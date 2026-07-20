@@ -182,7 +182,11 @@ class ErsiliaApptainer:
         input_path = Path(self.input).resolve()
         output_path = Path(self.output).resolve()
         container_path = Path(self.container).resolve()
-        raw_output = str(output_path) + ".raw"
+        # Keep the model-facing extension intact (some models validate it, e.g.
+        # ersilia_pack_utils' write_out rejects anything but a recognized suffix)
+        # while using a leading dot + ".raw" so this staging file never matches
+        # the "{model_id}_*.csv" glob other tooling uses to discover real outputs.
+        raw_output = str(output_path.parent / f".{output_path.stem}.raw{output_path.suffix}")
 
         # Create a list of unique parent directories to bind
         # This allows input, output, and sif to be anywhere
